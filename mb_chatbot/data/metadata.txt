@@ -1,0 +1,37 @@
+Table: overall_data
+Description: Monthly details of revenue, expenses and profit for each well.
+Columns:
+  - well_name: Well name
+  - metric_month: Month for which costs and revenue of each well applies to. It has the value of first day of the month and applies to entire month.
+  - Net Operating Profit to WI Owners: Profit made by the well for the corresponding month in metric_month column value
+  - Oil Production Tax: Oil production tax paid for the well for the corresponding month in metric_month column value
+  - Oil Sales - Bbls: Number of barells of oil produced by the well for the corresponding month in metric_month column value
+  - Total Revenue:: Revenue made by the well for the corresponding month in metric_month column value
+  - Total WI Expenses: Total expenses for the well for the corresponding month in metric_month column value
+  - Workover Cost: Workover costs for the well for the corresponding month in metric_month column value
+
+
+Table: expenses_data
+Description: Monthly detailed expenses breakdown of each well.
+Columns:
+  - well_name: Well name
+  - metric_month: Month for which costs and revenue of each well applies to. It has the value of first day of the month and applies to entire month.
+  - Administrative Overhead: Administrative Overhead costs applicable for the well for the month of metric_month column value
+  - Chemical & Solvents: Chemical & Solvents costs applicable for the well for the month of metric_month column value
+  - Computer/Monitoring: Computer/Monitoring costs applicable for the well for the month of metric_month column value
+  - Electricity: Electricity costs applicable for the well for the month of metric_month column value
+  - Environmental Expenses: Environmental Expenses costs applicable for the well for the month of metric_month column value
+  - Field Direct Payroll: Field Direct Payroll costs applicable for the well for the month of metric_month column value
+  - Field Office Expense: Field Office Expense costs applicable for the well for the month of metric_month column value
+  - Fuel & Power: Fuel & Power costs applicable for the well for the month of metric_month column value
+  - Hauling: Hauling costs applicable for the well for the month of metric_month column value
+  - Land Expense: Land Expense costs applicable for the well for the month of metric_month column value
+  - Lease Crew/Maint: Lease Crew/Maint costs applicable for the well for the month of metric_month column value
+  - Materials & Supplies: Materials & Supplies costs applicable for the well for the month of metric_month column value
+  - Rentals: Rentals costs applicable for the well for the month of metric_month column value
+  - Repair & Maintenance: Repair & Maintenance costs applicable for the well for the month of metric_month column value
+  - Surface Payments: Surface Payments costs applicable for the well for the month of metric_month column value
+  - Total WI Expenses: Total Expenses of the well for the month of metric_month column value
+  - Vacuum Truck: Vacuum Truck costs applicable for the well for the month of metric_month column value
+  - Vehicle Expense: Vehicle Expense costs applicable for the well for the month of metric_month column value
+  - Workover Cost: Workover Cost costs applicable for the well for the month of metric_month column value
