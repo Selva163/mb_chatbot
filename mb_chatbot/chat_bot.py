@@ -35,7 +35,7 @@ def generate_schema_description(metadata):
 
 schema_description = generate_schema_description(metadata)
 
-client = OpenAI()
+client = OpenAI(api_key=st.secrets["openai"]["api_key"])
 
 def generate_sql_query(prompt, schema_description):
     full_prompt = f"""
