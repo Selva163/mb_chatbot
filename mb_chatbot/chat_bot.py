@@ -40,10 +40,13 @@ client = OpenAI(api_key=st.secrets["openai"]["api_key"])
 def generate_sql_query(prompt, schema_description):
     full_prompt = f"""
         You are a helpful assistant that translates natural language questions into SQL queries. 
-        Backend is duckdb.
+        Backend is duckdb. For adding months use 'date_add(metric_month, INTERVAL 2 month)' .
+        For past months use 'metric_month - interval 2 month'.
+        use is_forecasted = 0 if not asked about future trends or forecasted values.
         Return only the SQL query. Dont have the 'sql' prefix. Always sort by metric_month before display as when applicable.
         Use the sum of all wells when asked about overall data or trend.
         When asked about wells data, dont group by month, unless asked about a well and its trend.
+        Use is_forecasted = 1 when asked about future trends or forecasted values for coming months. 
         Use the schema below to understand the database structure:
 
         {schema_description}
@@ -144,16 +147,16 @@ if st.button("Run Query"):
         if isinstance(result, str):  # Error message
             st.error(result)
         else:  # Display result dataframe
-            with st.spinner("Generating response..."):
+            with st.spinner("Generating response and Rendering chart..."):
                 # st.dataframe(result)
                 desccc = generate_descriptions(user_prompt, result)
-                st.text(f"{desccc}")
                 chart_code = generate_chart_code(user_prompt, result)
                 chart_code = chart_code.replace('```python', '').replace('```', '').strip()
-            with st.spinner("Rendering the chart..."):
+            # with st.spinner("Rendering the chart..."):
                 fig = execute_chart_code(chart_code, result)
+                st.markdown(f"{desccc}")
                 if fig:
                     # Display the chart
                     st.pyplot(fig)
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        st.error(f"Error: {str(e)}")    

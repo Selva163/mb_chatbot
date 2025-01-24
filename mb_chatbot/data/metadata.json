@@ -10,7 +10,8 @@
             "Oil_Sales_Bbls": "Number of barells of oil produced by the well for the corresponding month in metric_month column value",
             "Total_Revenue": "Revenue made by the well for the corresponding month in metric_month column value",
             "Total_WI_Expenses": "Total expenses for the well for the corresponding month in metric_month column value",
-            "Workover_Cost": "Workover costs for the well for the corresponding month in metric_month column value"
+            "Workover_Cost": "Workover costs for the well for the corresponding month in metric_month column value",
+            "is_forecasted": "Indicates whether the values are forecasted."
         }
       },
       "expenses_data": {
