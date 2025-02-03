@@ -35,3 +35,21 @@ Columns:
   - Vacuum Truck: Vacuum Truck costs applicable for the well for the month of metric_month column value
   - Vehicle Expense: Vehicle Expense costs applicable for the well for the month of metric_month column value
   - Workover Cost: Workover Cost costs applicable for the well for the month of metric_month column value
+
+Table: wells_dca
+Description: Decline curve analysis indicating economic limit of each well.
+Columns:
+  - well_name: Well name
+  - initial_production: Month for which costs and revenue of each well applies to. It has the value of first day of the month and applies to entire month.
+  - decline_rate: Decline rate found from decline curve analysis using python
+  - dca_method: Indicates what type of decline curve analysis. possible values are Exponential, Hyperbolic or Harmonic.
+  - already_uneconomic: Indicates whether the well is already uneconomic. Economic limit for well is 75 barells per month
+  - is_uneconomic_in_2_years: Indicates whether the well will become uneconomic in 2 years
+  - month_number_if_becoming_uneconomic: Indicates the number of months from now when will the well become uneconomic
+
+Table: wells_dca_future_predictions
+Description: Forecasted production of each well month wise using decline curve analysis.
+Columns:
+  - well_name: Well name
+  - metric_month: Month for which forecasted production of each well applies to. It has the value of first day of the month and applies to entire month. 
+  - metric_value: Forecasted production using decline curve analysis

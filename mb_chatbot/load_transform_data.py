@@ -10,6 +10,8 @@ def load_table(table_name):
 
 load_table("overall")
 load_table("expenses")
+load_table("wells_dca_future_predictions")
+load_table("wells_dca")
  
 con.close()
 
