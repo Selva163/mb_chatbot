@@ -40,6 +40,7 @@ client = OpenAI(api_key=st.secrets["openai"]["api_key"])
 def generate_sql_query(prompt, schema_description):
     full_prompt = f"""
         You are a helpful assistant that translates natural language questions into SQL queries. 
+        If the prompt is casual conversation, return appriopriate response instead of trying to generate sql and also mention you're a data analyst agent.
         Backend is duckdb. For adding months use 'date_add(metric_month, INTERVAL 2 month)' .
         For past months use 'metric_month - interval 2 month'.
         use is_forecasted = 0 if not asked about future trends or forecasted values.
@@ -60,6 +61,7 @@ def generate_sql_query(prompt, schema_description):
             {"role": "user", "content": full_prompt}
         ],
         model="gpt-4o-mini",
+        temperature=0.2,
     )
     # print(chat_completion)
     return chat_completion.choices[0].message.content.strip().replace('`','')
@@ -78,6 +80,7 @@ def generate_descriptions(prompt, response_data):
             {"role": "user", "content": full_prompt}
         ],
         model="gpt-4o-mini",
+        temperature=0.2,
     )
     # print(chat_completion)
     return chat_completion.choices[0].message.content.strip()
@@ -87,7 +90,8 @@ def execute_query(query, database_path="mb_chatbot/ddb/oildata.db"):
     try:
         df = conn.execute(query).fetchdf()
     except Exception as e:
-        return str(e)
+        st.text(f"{query}")
+        return "END"
     finally:
         conn.close()
     return df
@@ -110,6 +114,7 @@ def generate_chart_code(prompt, response_data):
             {"role": "user", "content": full_prompt}
         ],
         model="gpt-4o-mini",
+        temperature=0.2,
     )
     print(chat_completion.choices[0].message.content.strip())
     return chat_completion.choices[0].message.content.strip()
@@ -124,10 +129,6 @@ def execute_chart_code(chart_code, df):
     except Exception as e:
         st.error(f"Error in generated code execution: {e}")
         return None
-
-user_prompt = "whats the revenue trend look like?"
-sql_query = generate_sql_query(user_prompt, schema_description)
-result = execute_query(sql_query)
 
 st.title("Ask me about Austin Salt flat")
 
@@ -144,19 +145,20 @@ if st.button("Run Query"):
 
         # Execute SQL Query
         result = execute_query(sql_query)
-        if isinstance(result, str):  # Error message
-            st.error(result)
-        else:  # Display result dataframe
-            with st.spinner("Generating response and Rendering chart..."):
-                # st.dataframe(result)
-                desccc = generate_descriptions(user_prompt, result)
-                chart_code = generate_chart_code(user_prompt, result)
-                chart_code = chart_code.replace('```python', '').replace('```', '').strip()
-            # with st.spinner("Rendering the chart..."):
-                fig = execute_chart_code(chart_code, result)
-                st.markdown(f"{desccc}")
-                if fig:
-                    # Display the chart
-                    st.pyplot(fig)
+        if isinstance(result, pd.DataFrame):
+            if isinstance(result, str):  # Error message
+                st.error(result)
+            else:  # Display result dataframe
+                with st.spinner("Generating response and Rendering chart..."):
+                    # st.dataframe(result)
+                    desccc = generate_descriptions(user_prompt, result)
+                    chart_code = generate_chart_code(user_prompt, result)
+                    chart_code = chart_code.replace('```python', '').replace('```', '').strip()
+                # with st.spinner("Rendering the chart..."):
+                    fig = execute_chart_code(chart_code, result)
+                    st.markdown(f"{desccc}")
+                    if fig:
+                        # Display the chart
+                        st.pyplot(fig)
     except Exception as e:
         st.error(f"Error: {str(e)}")    
