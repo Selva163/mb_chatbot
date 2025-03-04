@@ -42,6 +42,75 @@ def handle_followup_click(question):
     st.session_state["user_input"] = question
     # st.rerun() 
 
+
+st.markdown("""
+    <style>
+        /* Make chat look like Perplexity */
+            
+        body { 
+        line-height: 1!important; 
+        } 
+            
+        .st-emotion-cache-1104ytp h1 { 
+            font-weight: 500!important; 
+        } 
+            
+        .user-qus { 
+        text-align: end; 
+        margin-left: 20%; 
+        margin-bottom: 20px; 
+        margin-top: 20px; 
+        } 
+
+        .user-qus p { 
+        display: inline-block; 
+        background-color: #efefef; 
+        padding: 12px 20px; 
+        border-radius: 30px; 
+        } 
+        
+        img { 
+        padding: 15px; 
+        border: 2px solid #e2e2e2; 
+        border-radius: 10px; 
+        vertical-align: middle; 
+        } 
+        
+        .bot-ans {
+        margin-right: 10%; 
+        margin-top: 15px;
+        }
+            
+        .main-content { 
+            max-width: 46rem; 
+            background-color: #fff; 
+            display: flex; 
+            margin-top: 4.5rem; 
+            border-radius: 10px; 
+            border: 1px solid #ebebeb; 
+            align-content: stretch; 
+        } 
+            
+        .full-container { 
+            background: rgb(252 252 252) !important; 
+        } 
+        
+        .our-just-content{ 
+        justify-content: center!important; 
+        } 
+            
+            .msg-box { 
+        box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px; 
+        } 
+            
+            .chatbox { 
+        padding: 1rem 1.5rem 1rem !important; 
+        } 
+    </style>
+            
+""", unsafe_allow_html=True)
+
+
 client = OpenAI(api_key=st.secrets["openai"]["api_key"])
 
 def generate_sql_query(prompt, schema_description):
@@ -51,7 +120,7 @@ def generate_sql_query(prompt, schema_description):
         Backend is duckdb. For adding months use 'date_add(metric_month, INTERVAL 2 month)' .
         For past months use 'metric_month - interval 2 month'.
         use is_forecasted = 0 if not asked about future trends or forecasted values.
-        Return only the SQL query. Dont have the 'sql' prefix. Always sort by metric_month before display as when applicable.
+        Return only the SQL query. Dont have the 'sql' prefix. Always sort by metric_month before display as when applicable, ignore the order by if not needed.
         Use the sum of all wells when asked about overall data or trend.
         When asked about wells data, dont group by month, unless asked about a well and its trend.
         Use is_forecasted = 1 when asked about future trends or forecasted values for coming months. 
@@ -115,8 +184,11 @@ def generate_descriptions(prompt, response_data):
         temperature=0.2,
     )
     response_data =  chat_completion.choices[0].message.content.strip().replace('`','')
-    # print(response_data)
-    # return chat_completion.choices[0].message.content.strip()
+    if response_data.startswith('json'):
+        response_data = response_data.replace('json','')
+    print(response_data)
+
+    # print(chat_completion.choices[0].message.content.strip())
     return json.loads(response_data)
 
 def generate_chart_code(prompt, response_data):
@@ -166,15 +238,15 @@ for msg in st.session_state.messages:
     with st.container():
         if msg["role"] == "assistant":
             st.pyplot(msg["image"])
-            st.markdown(f"**💡 Summary:** {msg['summary']}")  # Display summary
+            st.markdown(f"<h4>💡 Summary: </h4> {msg['summary']} ", unsafe_allow_html=True)  # Display summary
             for obs in msg['observations']:
                 st.markdown(f"- {obs}")
             # st.image(msg["image"], use_column_width=True)  # Display image
-            st.markdown("### 🔍 Related:")
+            st.markdown(f"<h4>🔍 Related:</h4>", unsafe_allow_html=True)
             for q in msg["follow_ups"]:
                 st.button(q, key=q, on_click=handle_followup_click, args=(q,))
         else:
-            st.markdown(msg["content"])  # Display user question
+            st.markdown(f'<div class="user-qus"><p>{msg["content"]}</p></div>', unsafe_allow_html=True)  # Display user question
 
 if "trigger_query" not in st.session_state:
     st.session_state["trigger_query"] = False
@@ -196,8 +268,10 @@ if "trigger_query" in st.session_state:
 
 if user_prompt or ("trigger_query" in st.session_state and st.session_state["trigger_query"]):
     st.session_state.messages.append({"role": "user", "content": user_query})
-    with st.container():
-        st.markdown(f"**You asked:** {user_query}") 
+    # with st.container():
+    st.markdown(f'<div class="user-qus"><p>{user_query}</p></div>', unsafe_allow_html=True)
+    # st.markdown(f"**You asked:** {user_query}", unsafe_allow_html=True) 
+    # st.markdown('</div>', unsafe_allow_html=True)
     with st.container():
         with st.spinner("Thinking..."):
             sql_query = generate_sql_query(user_query, schema_description)
@@ -224,37 +298,19 @@ if user_prompt or ("trigger_query" in st.session_state and st.session_state["tri
                 }
                 st.session_state.messages.append(response_data)
 
-                st.markdown(f"**💡 Summary:** {summary}")
+                st.markdown('<div class="bot-ans">', unsafe_allow_html=True)
+                st.markdown(f"<h4>💡 Summary: </h4> {summary} ", unsafe_allow_html=True) 
                 for obs in observations:
                     st.markdown(f"- {obs}")
 
-                st.markdown("### 🔍 Related:")
+                st.markdown(f"<h4>🔍 Related:</h4>", unsafe_allow_html=True)
                 for question in follow_ups:
                     st.button(question, key=question, on_click=handle_followup_click, args=(question,))
+
+                st.markdown('</div>', unsafe_allow_html=True)
             else:
                 st.markdown("⚠️ No relevant data found. Try rephrasing your question.")
 
 
-st.markdown("""
-    <style>
-        /* Make chat look like Perplexity */
-        .stChatMessage { 
-            padding: 12px; 
-            border-radius: 10px; 
-            margin-bottom: 10px; 
-            max-width: 80%; 
-        }
-        .stChatMessage.assistant { 
-            background-color: #e0e7ff; 
-            font-weight: bold; 
-        }
-        .stChatInput input { 
-            border-radius: 20px; 
-            padding: 12px; 
-        }
-        .stSpinner {
-            color: #2563eb;
-        }
-    </style>
-""", unsafe_allow_html=True)
+
 
