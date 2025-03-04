@@ -8,6 +8,7 @@ import sweetviz as sv
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import random 
 
 # Load OpenAI API Key
 import os
@@ -35,6 +36,12 @@ def generate_schema_description(metadata):
 
 schema_description = generate_schema_description(metadata)
 
+def handle_followup_click(question):
+    """Function to handle when a follow-up question is clicked."""
+    st.session_state["trigger_query"] = True
+    st.session_state["user_input"] = question
+    # st.rerun() 
+
 client = OpenAI(api_key=st.secrets["openai"]["api_key"])
 
 def generate_sql_query(prompt, schema_description):
@@ -48,6 +55,7 @@ def generate_sql_query(prompt, schema_description):
         Use the sum of all wells when asked about overall data or trend.
         When asked about wells data, dont group by month, unless asked about a well and its trend.
         Use is_forecasted = 1 when asked about future trends or forecasted values for coming months. 
+        avoid is_forecasted column for expense_data table.
         Use the schema below to understand the database structure:
 
         {schema_description}
@@ -66,14 +74,38 @@ def generate_sql_query(prompt, schema_description):
     # print(chat_completion)
     return chat_completion.choices[0].message.content.strip().replace('`','')
 
+def execute_query(query, database_path="mb_chatbot/ddb/oildata.db"):
+    conn = duckdb.connect(database=database_path, read_only=True)
+    try:
+        df = conn.execute(query).fetchdf()
+    except Exception as e:
+        print(e)
+        st.text(f"{query}")
+        return "END"
+    finally:
+        conn.close()
+    return df
+
 def generate_descriptions(prompt, response_data):
     full_prompt = f"""
         You are an analytical assistant providing key insights. Generate a one-line summary and 3-4 observations based on the data.
-        You will be provided with user query and the data(response) for the user query.
+        You will be provided with user query and the data(response) for the user query. 
+        Also suggest follow up questions relevant to the user query based on the schema description.
+        Avoid explicitly mentioning json.
+
+        Format response as JSON:
+        {{
+            "summary": "Brief summary here",
+            "observations": ["Observation 1", "Observation 2"],
+            "follow_ups": ["Follow-up question 1", "Follow-up question 2"]
+        }}
 
         User query: {prompt}
 
         Data(response): {response_data.values}
+
+        Schema description: {schema_description}
+
         """
     chat_completion = client.chat.completions.create(
         messages=[
@@ -82,20 +114,10 @@ def generate_descriptions(prompt, response_data):
         model="gpt-4o-mini",
         temperature=0.2,
     )
-    # print(chat_completion)
-    return chat_completion.choices[0].message.content.strip()
-
-def execute_query(query, database_path="mb_chatbot/ddb/oildata.db"):
-    conn = duckdb.connect(database=database_path, read_only=True)
-    try:
-        df = conn.execute(query).fetchdf()
-    except Exception as e:
-        st.text(f"{query}")
-        return "END"
-    finally:
-        conn.close()
-    return df
-
+    response_data =  chat_completion.choices[0].message.content.strip().replace('`','')
+    # print(response_data)
+    # return chat_completion.choices[0].message.content.strip()
+    return json.loads(response_data)
 
 def generate_chart_code(prompt, response_data):
     full_prompt = f"""
@@ -116,7 +138,7 @@ def generate_chart_code(prompt, response_data):
         model="gpt-4o-mini",
         temperature=0.2,
     )
-    print(chat_completion.choices[0].message.content.strip())
+    # print(chat_completion.choices[0].message.content.strip())
     return chat_completion.choices[0].message.content.strip()
 
 # Function to execute the generated Python code
@@ -133,32 +155,106 @@ def execute_chart_code(chart_code, df):
 st.title("Ask me about Austin Salt flat")
 
 # User input for prompt
-user_prompt = st.text_input("Enter your query", "whats the revenue trend look like?")
+# user_prompt = st.text_input("Enter your query", "whats the revenue trend look like?")
 
-# Button to trigger query execution
-if st.button("Run Query"):
-    try:
-        # Generate SQL Query
-        sql_query = generate_sql_query(user_prompt, schema_description)
-        # st.write(f"Generated SQL Query:")
-        # st.text(f"{sql_query}")
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-        # Execute SQL Query
-        result = execute_query(sql_query)
-        if isinstance(result, pd.DataFrame):
-            if isinstance(result, str):  # Error message
-                st.error(result)
-            else:  # Display result dataframe
-                with st.spinner("Generating response and Rendering chart..."):
-                    # st.dataframe(result)
-                    desccc = generate_descriptions(user_prompt, result)
-                    chart_code = generate_chart_code(user_prompt, result)
-                    chart_code = chart_code.replace('```python', '').replace('```', '').strip()
-                # with st.spinner("Rendering the chart..."):
-                    fig = execute_chart_code(chart_code, result)
-                    st.markdown(f"{desccc}")
-                    if fig:
-                        # Display the chart
-                        st.pyplot(fig)
-    except Exception as e:
-        st.error(f"Error: {str(e)}")    
+follow_upsv = ["What is the production trend?", "How does it compare with the forecast?", "What are the key drivers?"]
+
+for msg in st.session_state.messages:
+    with st.container():
+        if msg["role"] == "assistant":
+            st.pyplot(msg["image"])
+            st.markdown(f"**💡 Summary:** {msg['summary']}")  # Display summary
+            for obs in msg['observations']:
+                st.markdown(f"- {obs}")
+            # st.image(msg["image"], use_column_width=True)  # Display image
+            st.markdown("### 🔍 Related:")
+            for q in msg["follow_ups"]:
+                st.button(q, key=q, on_click=handle_followup_click, args=(q,))
+        else:
+            st.markdown(msg["content"])  # Display user question
+
+if "trigger_query" not in st.session_state:
+    st.session_state["trigger_query"] = False
+if "user_input" not in st.session_state:
+    st.session_state["user_input"] = ""
+
+user_prompt = st.chat_input("Ask me anything about Austin Salt Flat...")
+user_query = ""
+if user_prompt:
+    user_query = user_prompt
+
+if st.session_state.get("trigger_query", False):
+    user_query = st.session_state["user_input"]
+
+# print([s for s in st.session_state.keys()])
+if "trigger_query" in st.session_state:
+    print("this", st.session_state["user_input"])
+    print(st.session_state["trigger_query"])
+
+if user_prompt or ("trigger_query" in st.session_state and st.session_state["trigger_query"]):
+    st.session_state.messages.append({"role": "user", "content": user_query})
+    with st.container():
+        st.markdown(f"**You asked:** {user_query}") 
+    with st.container():
+        with st.spinner("Thinking..."):
+            sql_query = generate_sql_query(user_query, schema_description)
+            result = execute_query(sql_query)
+            # print("result", result)
+            if isinstance(result, pd.DataFrame) and not result.empty:
+                response_data = generate_descriptions(user_query, result)
+                # print(response_data)
+                summary = response_data["summary"]
+                observations = response_data["observations"]
+                follow_ups = response_data["follow_ups"]
+
+                chart_code = generate_chart_code(user_query, result).replace('```python', '').replace('```', '').strip()
+                fig = execute_chart_code(chart_code, result)
+                if fig:
+                    st.pyplot(fig)
+
+                response_data = {
+                    "role": "assistant",
+                    "summary": summary,
+                    "image": fig,
+                    "follow_ups": follow_ups,
+                    "observations": observations
+                }
+                st.session_state.messages.append(response_data)
+
+                st.markdown(f"**💡 Summary:** {summary}")
+                for obs in observations:
+                    st.markdown(f"- {obs}")
+
+                st.markdown("### 🔍 Related:")
+                for question in follow_ups:
+                    st.button(question, key=question, on_click=handle_followup_click, args=(question,))
+            else:
+                st.markdown("⚠️ No relevant data found. Try rephrasing your question.")
+
+
+st.markdown("""
+    <style>
+        /* Make chat look like Perplexity */
+        .stChatMessage { 
+            padding: 12px; 
+            border-radius: 10px; 
+            margin-bottom: 10px; 
+            max-width: 80%; 
+        }
+        .stChatMessage.assistant { 
+            background-color: #e0e7ff; 
+            font-weight: bold; 
+        }
+        .stChatInput input { 
+            border-radius: 20px; 
+            padding: 12px; 
+        }
+        .stSpinner {
+            color: #2563eb;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
