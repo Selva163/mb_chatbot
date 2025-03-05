@@ -67,6 +67,7 @@ st.markdown("""
         background-color: #efefef; 
         padding: 12px 20px; 
         border-radius: 30px; 
+        color: #000 !important;
         } 
         
         img { 
